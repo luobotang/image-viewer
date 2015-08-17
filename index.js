@@ -1,6 +1,6 @@
 var $ = require('jquery');
 
-var ViewImage = require('./viewer-image');
+var ViewImage = require('./lib/viewer-image');
 
 var KEY_ESC = 27;
 
