@@ -1,0 +1,26 @@
+{
+  "name": "image-viewer",
+  "version": "0.1.0",
+  "description": "image viewer",
+  "main": "index",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/luobotang/image-viewer.git"
+  },
+  "keywords": [
+    "image",
+    "viewer"
+  ],
+  "author": "luobotang",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/luobotang/image-viewer/issues"
+  },
+  "homepage": "https://github.com/luobotang/image-viewer#readme",
+  "dependencies": {
+    "jquery-mousewheel": "^3.1.13"
+  }
+}

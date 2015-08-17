@@ -1,0 +1,38 @@
+@charset "UTF-8";
+
+@-webkit-keyframes image-viewer-show {
+	0% { transform: scale(0.9); }
+	80% { transform: scale(1.1); }
+	90% { transform: scale(0.95); }
+	100% { transform: scale(1); }
+}
+@keyframes image-viewer-show {
+	0% { transform: scale(0.8); }
+	70% { transform: scale(1.1); }
+	90% { transform: scale(0.95); }
+	100% { transform: scale(1); }
+}
+
+.image-viewer-container {
+	display: block; position: fixed;
+	left: 0; right: 0; top: 0; bottom: 0;
+	background-color: rgba(220,220,220,0.8);
+	z-index: 9999;
+	overflow: auto;
+
+	.viewable_image {
+		display: none; position: absolute;
+		box-shadow: 0 0 10px #666;
+
+		&.img-loaded {
+			display: block;
+			-webkit-animation: image-viewer-show 0.2s;
+			animation: image-viewer-show 0.2s;
+		}
+	}
+}
+
+// 查看图片时，隐藏文档滚动条
+body.on-image-viewing {
+	overflow: hidden;
+}
