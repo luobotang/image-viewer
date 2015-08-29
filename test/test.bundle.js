@@ -1,48 +1,55 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-var $ = require('jquery');
+var $ = require('jquery')
 
-var ViewImage = require('./lib/viewer-image');
+var ViewableImage = require('./lib/ViewableImage')
 
-var KEY_ESC = 27;
-
-// 图片全屏预览组件
+var KEY_ESC = 27
+var CLS_ON_IMAGE_VIEWING = 'on-image-viewing'
 
 var box = $("<div>", {
 	"class": "image-viewer-container",
 	click: close
-});
+})
 
-var view_img;
+var view_img = null
+var inited = false
 
 function show(img_src) {
-	view_img = new ViewImage(img_src);
-	box.append(view_img);
-	box.show();
-	$('body').addClass('on-image-viewing');
-};
+	if (!inited) {
+		$(function () {
+			show(img_src)
+		})
+		return
+	}
+	view_img = ViewableImage(img_src)
+	box.append(view_img)
+	box.show()
+	$('body').addClass(CLS_ON_IMAGE_VIEWING)
+}
 
 function close() {
-	if (view_img) { // clear img
-		$(view_img).remove();
-		view_img = null;
+	if (view_img) {
+		view_img.remove()
+		view_img = null
 	}
-	box.hide();
-	$('body').removeClass('on-image-viewing');
-};
+	box.hide()
+	$('body').removeClass(CLS_ON_IMAGE_VIEWING);
+}
 
-// add handler on box no use, don't know why
-$('body').keydown(function (e) {
-	if (e.keyCode == KEY_ESC) close();
-});
-
-box.hide().appendTo(document.body);
+$(function () {
+	inited = true
+	$(document).keydown(function (e) {
+		if (e.which == KEY_ESC) close()
+	})
+	box.hide().appendTo('body')
+})
 
 module.exports = {
 	show: show,
 	close: close
-};
+}
 
-},{"./lib/viewer-image":2,"jquery":5}],2:[function(require,module,exports){
+},{"./lib/ViewableImage":2,"jquery":5}],2:[function(require,module,exports){
 var $ = require('jquery')
 var getWindowSize = require('get-window-size')
 require('jquery-mousewheel')($) // 初始化
@@ -56,8 +63,9 @@ var STYLE_CURSOR_IMAGE_UNMOVE = 'default'
 
 function ViewableImage(img_src) {
 
-	var img_size_origin = { width: 0, height: 0 }
-	var zoom = { last: 1.0, curr: 1.0 }
+	var imageOriginWidth
+	var imageOriginHeight
+	var zoom = 1.0
 	var ondrag = false
 
 	var img = $('<img>', {
@@ -82,55 +90,48 @@ function ViewableImage(img_src) {
 		setTimeout(onLoad, 0)
 	}
 
-	function resetImageSize() {
-		img.width(img_size_origin.width * zoom.curr)
-		img.height(img_size_origin.height * zoom.curr)
-	}
-
-	function setPos(left, top) {
-		img.css({ left: left, top: top})
-	}
-
 	function zoomImg(curr_x, curr_y, scale) {
-		// 以鼠标所在位置为中心缩放图像
-		zoom.last = zoom.curr
-		zoom.curr = scale
 		var position = img.position()
-		resetImageSize()
-		setPos(
-			curr_x - (zoom.curr / zoom.last) * (curr_x - position.left),
-			curr_y - (zoom.curr / zoom.last) * (curr_y - position.top)
-		)
-	}
-
-	function setPosCenter() {
-		var win_size = getWindowSize()
-		setPos(
-			(win_size.width - img.width()) / 2,
-			(win_size.height - img.height()) / 2
-		)
+		// 以鼠标所在位置为中心缩放图像
+		var lastZoom = zoom
+		zoom = scale
+		img.width(imageOriginWidth * zoom)
+		img.height(imageOriginHeight * zoom)
+		img.css({
+			left: curr_x - (zoom / lastZoom) * (curr_x - position.left),
+			top: curr_y - (zoom / lastZoom) * (curr_y - position.top)
+		})
 	}
 
 	function onLoad() {
 		img.addClass(CLS_IMAGE_LOADED)
-		// record the original image size
-		img_size_origin = {
-			width:  img.width(),
-			height: img.height()
-		}
+		// 检测图像是否超出窗口范围
+		// 若图像大小超出窗口范围，则缩小到窗口范围内
+		imageOriginWidth = img.width()
+		imageOriginHeight = img.height()
 		var win_size = getWindowSize()
-		var h_ratio = win_size.height / img_size_origin.height
-		var w_ratio = win_size.width / img_size_origin.width
-		// set zoom, make sure img not out of window
-		zoom.curr = (h_ratio < w_ratio) ?
-					(h_ratio < 1.0 ? h_ratio : 1.0) :
-					(w_ratio < 1.0 ? w_ratio : 1.0)
-		resetImageSize();
-		setPosCenter();
+		var windowHeight = win_size.height
+		var windowWidth = win_size.width
+		var h_ratio = imageOriginHeight / windowHeight
+		var w_ratio = imageOriginWidth / windowWidth
+		var radio = Math.max(h_ratio, w_ratio)
+		if (radio > 1.0) {
+			zoom = 1 / radio
+		}
+		var imageNewWidth = imageOriginWidth * zoom
+		var imageNewHeight = imageOriginHeight * zoom
+		img
+		.width(imageNewWidth)
+		.height(imageNewHeight)
+		// 图像在窗口居中显示
+		.css({
+			left: (windowWidth - imageNewWidth) / 2,
+			top: (windowHeight - imageNewHeight) / 2
+		})
 	}
 	// 鼠标滚轮控制图像缩放
 	function onWheel(e, delta) {
-		zoomImg(e.clientX, e.clientY, zoom.curr * (delta < 0 ? 0.9 : 1.1))
+		zoomImg(e.clientX, e.clientY, zoom * (delta < 0 ? 0.9 : 1.1))
 		e.preventDefault()
 		return false
 	}
@@ -150,32 +151,35 @@ function ViewableImage(img_src) {
 		lastMousePositonY = e.clientY
 		img.css("cursor", STYLE_CURSOR_IMAGE_MOVE)
 	}
+
 	function onMousemove(e) {
 		if (ondrag) {
 			var img_pos = img.position()
 			var cur_x = e.clientX
 			var cur_y = e.clientY
-			setPos(
-				img_pos.left + cur_x - lastMousePositonX,
-				img_pos.top  + cur_y - lastMousePositonY
-			)
+			img.css({
+				left: img_pos.left + cur_x - lastMousePositonX,
+				top: img_pos.top  + cur_y - lastMousePositonY
+			})
 			lastMousePositonX = cur_x
 			lastMousePositonY = cur_y
 		}
 	}
+
 	function onMouseup() {
 		if (ondrag) {
 			ondrag = false
 			img.css("cursor", STYLE_CURSOR_IMAGE_UNMOVE)
 		}
 	}
+
 	function cancelEvent(e) {
 		e.stopPropagation()
 		return false
 	}
 
 	// 将构建的 img 元素返回
-	return img;
+	return img
 }
 
 module.exports = ViewableImage

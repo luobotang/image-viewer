@@ -1,13 +1,21 @@
 @charset "UTF-8";
 
 @-webkit-keyframes image-viewer-show {
-	0% { transform: scale(0.9); }
-	80% { transform: scale(1.1); }
-	90% { transform: scale(0.95); }
-	100% { transform: scale(1); }
+	0% { -webkit-transform: scale(0.9); }
+	80% { -webkit-transform: scale(1.1); }
+	90% { -webkit-transform: scale(0.95); }
+	100% { -webkit-transform: scale(1); }
 }
+@-moz-keyframes image-viewer-show {
+	0% { -moz-transform: scale(0.9); }
+	80% { -moz-transform: scale(1.1); }
+	90% { -moz-transform: scale(0.95); }
+	100% { -moz-transform: scale(1); }
+}
+// no "@-ms-keyframes"
+// IE10 support @keyframes
 @keyframes image-viewer-show {
-	0% { transform: scale(0.8); }
+	0% { transform: scale(0.9); }
 	70% { transform: scale(1.1); }
 	90% { transform: scale(0.95); }
 	100% { transform: scale(1); }
@@ -27,12 +35,14 @@
 		&.img-loaded {
 			display: block;
 			-webkit-animation: image-viewer-show 0.2s;
+			-moz-animation: image-viewer-show 0.2s;
+			// no "-ms-animation"
+			// IE10+ support animation property
 			animation: image-viewer-show 0.2s;
 		}
 	}
 }
 
-// 查看图片时，隐藏文档滚动条
 body.on-image-viewing {
 	overflow: hidden;
 }
