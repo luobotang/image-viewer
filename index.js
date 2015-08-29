@@ -30,9 +30,9 @@ function close() {
 };
 
 // add handler on box no use, don't know why
-$('body').keydown(function (e) {
-	if (e.keyCode == KEY_ESC) close();
-});
+$(document).keydown(function (e) {
+	if (e.which == KEY_ESC) close();
+})
 
 box.hide().appendTo(document.body);
 

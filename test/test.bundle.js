@@ -42,27 +42,28 @@ module.exports = {
 	close: close
 };
 
-},{"./lib/viewer-image":2,"jquery":4}],2:[function(require,module,exports){
-var $ = require('jquery');
-var jqueryMousewheel = require('jquery-mousewheel');
+},{"./lib/viewer-image":2,"jquery":5}],2:[function(require,module,exports){
+var $ = require('jquery')
+var getWindowSize = require('get-window-size')
+require('jquery-mousewheel')($) // 初始化
 
-// 初始化 jQuery 插件
-jqueryMousewheel($);
+var cache = {}
 
-var cache = {};
+var CLS_VIEWER_IMAGE = 'viewable_image'
+var CLS_IMAGE_LOADED = 'img-loaded'
+var STYLE_CURSOR_IMAGE_MOVE = 'move'
+var STYLE_CURSOR_IMAGE_UNMOVE = 'default'
 
-// 依赖 mousewheel 插件提供的 jQuery 的鼠标滚轮事件
-module.exports = function (img_src) {
+function ViewableImage(img_src) {
 
-	var img_size_origin = { width: 0, height: 0 },
-		zoom = { last: 1.0, curr: 1.0 },
-		ondrag = false,
-		last_mouse_pos = { x: 0, y: 0 };
+	var img_size_origin = { width: 0, height: 0 }
+	var zoom = { last: 1.0, curr: 1.0 }
+	var ondrag = false
 
 	var img = $('<img>', {
-		"class": "viewable_image",
+		"class": CLS_VIEWER_IMAGE,
 		src: img_src
-	});
+	})
 
 	img.bind({
 		mousewheel: onWheel,
@@ -71,139 +72,154 @@ module.exports = function (img_src) {
 		mouseup: onMouseup,
 		dragstart: cancelEvent,
 		click: cancelEvent
-	});
+	})
 
 	// 缓存图片路径，对于已缓存图片直接按已加载进行处理
 	if (!cache[img_src]) {
-		cache[img_src] = true;
-		img.on('load', onLoad);
+		cache[img_src] = true
+		img.on('load', onLoad)
 	} else {
-		setTimeout(onLoad, 0);
+		setTimeout(onLoad, 0)
 	}
 
-	function setSize(width, height) {
-		//console.log("in setSize. width: " + width + ", height: " + height);
-		img.width(width).height(height);
-	}
-
-	// after changed zoom value, update img's size
-	function updateSize() {
-		setSize(
-			img_size_origin.width * zoom.curr,
-			img_size_origin.height * zoom.curr
-		);
-	}
-
-	function getSize(size) {
-		return {
-			width: img.width(),
-			height: img.height()
-		};
-	}
-
-	function getWindowSize() {
-		return {
-			width: 	window.innerWidth,
-			height: window.innerHeight
-		};
-	}
-
-	function getPos() {
-		return {
-			left: parseInt(img.css("left")),
-			top:  parseInt(img.css("top"))
-		};
+	function resetImageSize() {
+		img.width(img_size_origin.width * zoom.curr)
+		img.height(img_size_origin.height * zoom.curr)
 	}
 
 	function setPos(left, top) {
-		//console.log("in setPos. left: " + left + ", top: " + top);
-		img.css({ left: left + "px", top: top + "px" });
+		img.css({ left: left, top: top})
 	}
 
 	function zoomImg(curr_x, curr_y, scale) {
-		//console.log("in zoomImg. curr_x: %s, curr_y: %s", curr_x, curr_y);
-		// when scroll with mouse's middle button scale the image
-		// but fix the mouse pointer on the image
-		zoom.last = zoom.curr;
-		zoom.curr = scale;
-		var img_pos = getPos();
-		updateSize();
+		// 以鼠标所在位置为中心缩放图像
+		zoom.last = zoom.curr
+		zoom.curr = scale
+		var position = img.position()
+		resetImageSize()
 		setPos(
-			curr_x - (zoom.curr / zoom.last) * (curr_x - img_pos.left),
-			curr_y - (zoom.curr / zoom.last) * (curr_y - img_pos.top)
-		);
+			curr_x - (zoom.curr / zoom.last) * (curr_x - position.left),
+			curr_y - (zoom.curr / zoom.last) * (curr_y - position.top)
+		)
 	}
 
 	function setPosCenter() {
-		var img_size = getSize(),
-			win_size = getWindowSize();
+		var win_size = getWindowSize()
 		setPos(
-			(win_size.width - img_size.width) / 2,
-			(win_size.height - img_size.height) / 2
-		);
+			(win_size.width - img.width()) / 2,
+			(win_size.height - img.height()) / 2
+		)
 	}
 
 	function onLoad() {
-		img.addClass('img-loaded');
+		img.addClass(CLS_IMAGE_LOADED)
 		// record the original image size
 		img_size_origin = {
 			width:  img.width(),
 			height: img.height()
-		};
-		var win_size = getWindowSize(),
-			h_ratio = win_size.height / img_size_origin.height,
-			w_ratio = win_size.width / img_size_origin.width;
+		}
+		var win_size = getWindowSize()
+		var h_ratio = win_size.height / img_size_origin.height
+		var w_ratio = win_size.width / img_size_origin.width
 		// set zoom, make sure img not out of window
 		zoom.curr = (h_ratio < w_ratio) ?
 					(h_ratio < 1.0 ? h_ratio : 1.0) :
-					(w_ratio < 1.0 ? w_ratio : 1.0);
-		updateSize();
+					(w_ratio < 1.0 ? w_ratio : 1.0)
+		resetImageSize();
 		setPosCenter();
 	}
-	// require: jquery.mousewheel plugin
 	// 鼠标滚轮控制图像缩放
 	function onWheel(e, delta) {
-		zoomImg(e.clientX, e.clientY, zoom.curr * (delta < 0 ? 0.9 : 1.1));
-		e.preventDefault();
-		return false;
+		zoomImg(e.clientX, e.clientY, zoom.curr * (delta < 0 ? 0.9 : 1.1))
+		e.preventDefault()
+		return false
 	}
-	// drag image with mouse
+
+	var lastMousePositonX = 0
+	var lastMousePositonY = 0
+
+	// var BUTTON_LEFT = 0
+
 	function onMousedown(e) {
-		// on Firefox means left button
-		if (e.button == 0) {
-			e.preventDefault();
-			ondrag = true;
-			last_mouse_pos = { x: e.clientX, y: e.clientY };
-			img.css("cursor", "move");
-		}
+		// 不再检测是否鼠标左键按下
+		// MouseEvent.button IE9+ support
+		// e.button === BUTTON_LEFT
+		e.preventDefault()
+		ondrag = true
+		lastMousePositonX = e.clientX
+		lastMousePositonY = e.clientY
+		img.css("cursor", STYLE_CURSOR_IMAGE_MOVE)
 	}
 	function onMousemove(e) {
 		if (ondrag) {
-			var img_pos = getPos(),
-				cur_x = e.clientX,
-				cur_y = e.clientY;
+			var img_pos = img.position()
+			var cur_x = e.clientX
+			var cur_y = e.clientY
 			setPos(
-				img_pos.left + cur_x - last_mouse_pos.x,
-				img_pos.top  + cur_y - last_mouse_pos.y
-			);
-			last_mouse_pos = { x: cur_x, y: cur_y };
+				img_pos.left + cur_x - lastMousePositonX,
+				img_pos.top  + cur_y - lastMousePositonY
+			)
+			lastMousePositonX = cur_x
+			lastMousePositonY = cur_y
 		}
 	}
-	function onMouseup(e) {
+	function onMouseup() {
 		if (ondrag) {
-			ondrag = false;
-			img.css("cursor", "default");
+			ondrag = false
+			img.css("cursor", STYLE_CURSOR_IMAGE_UNMOVE)
 		}
 	}
 	function cancelEvent(e) {
-		e.stopPropagation();
-		return false;
+		e.stopPropagation()
+		return false
 	}
 
 	// 将构建的 img 元素返回
 	return img;
-};
-},{"jquery":4,"jquery-mousewheel":3}],3:[function(require,module,exports){
+}
+
+module.exports = ViewableImage
+},{"get-window-size":3,"jquery":5,"jquery-mousewheel":4}],3:[function(require,module,exports){
+/*
+ * http://andylangton.co.uk/blog/development/get-viewport-size-width-and-height-javascript
+ */
+(function (getWindowSize) {
+
+	if (typeof exports === 'object') {
+		module.exports = getWindowSize
+	} else {
+		window.getWindowSize = getWindowSize
+	}
+
+})(function () {
+
+	var viewportwidth
+	var viewportheight
+
+	if (typeof window.innerWidth != 'undefined') {
+		viewportwidth = window.innerWidth
+		viewportheight = window.innerHeight
+	}
+	else if (
+		typeof document.documentElement != 'undefined' &&
+		typeof document.documentElement.clientWidth != 'undefined' &&
+		document.documentElement.clientWidth != 0) {
+		viewportwidth = document.documentElement.clientWidth
+		viewportheight = document.documentElement.clientHeight
+	}
+	else {
+		var body = document.getElementsByTagName('body')[0]
+		viewportwidth = body.clientWidth
+		viewportheight = body.clientHeight
+	}
+
+	return {
+		width: viewportwidth,
+		height: viewportheight
+	}
+})
+
+},{}],4:[function(require,module,exports){
 /*!
  * jQuery Mousewheel 3.1.13
  *
@@ -426,7 +442,7 @@ module.exports = function (img_src) {
 
 }));
 
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v1.11.3
  * http://jquery.com/
@@ -10779,7 +10795,7 @@ return jQuery;
 
 }));
 
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 var $ = require('jquery')
 var ImageViewer = require('../index')
 
@@ -10788,4 +10804,4 @@ $(function () {
 		ImageViewer.show(this.src)
 	})
 })
-},{"../index":1,"jquery":4}]},{},[5]);
+},{"../index":1,"jquery":5}]},{},[6]);
