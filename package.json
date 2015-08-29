@@ -22,5 +22,12 @@
   "homepage": "https://github.com/luobotang/image-viewer#readme",
   "dependencies": {
     "jquery-mousewheel": "^3.1.13"
+  },
+  "devDependencies": {
+    "browserify": "^11.0.1",
+    "grunt": "^0.4.5",
+    "grunt-browserify": "^4.0.0",
+    "grunt-contrib-less": "^1.0.1",
+    "jquery": "^1.11.3"
   }
 }
