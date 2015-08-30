@@ -73,15 +73,6 @@ function ViewableImage(img_src) {
 		src: img_src
 	})
 
-	img.bind({
-		mousewheel: onWheel,
-		mousedown: onMousedown,
-		mousemove: onMousemove,
-		mouseup: onMouseup,
-		dragstart: cancelEvent,
-		click: cancelEvent
-	})
-
 	// 缓存图片路径，对于已缓存图片直接按已加载进行处理
 	if (!cache[img_src]) {
 		cache[img_src] = true
@@ -128,10 +119,24 @@ function ViewableImage(img_src) {
 			left: (windowWidth - imageNewWidth) / 2,
 			top: (windowHeight - imageNewHeight) / 2
 		})
+
+		// 图像已加入页面后再绑定事件
+		// 提前绑定 mousewheel 在 IE8 下会报错
+		img.on({
+			mousewheel: onWheel,
+			mousedown: onMousedown,
+			mousemove: onMousemove,
+			mouseup: onMouseup,
+			click: cancelEvent, // 重要 - 避免点击后关闭窗口
+			dragstart: cancelEvent // 重要 - 避免不能拖动
+		})
 	}
+
 	// 鼠标滚轮控制图像缩放
-	function onWheel(e, delta) {
-		zoomImg(e.clientX, e.clientY, zoom * (delta < 0 ? 0.9 : 1.1))
+	function onWheel(e) {
+		// jquery-mousewheel 向下滚动 deltaY -1 向上滚动 deltaY 1
+		var isZoomIn = e.deltaY > 0
+		zoomImg(e.clientX, e.clientY, zoom * (isZoomIn ? 1.1 : 0.9))
 		e.preventDefault()
 		return false
 	}
@@ -145,11 +150,12 @@ function ViewableImage(img_src) {
 		// 不再检测是否鼠标左键按下
 		// MouseEvent.button IE9+ support
 		// e.button === BUTTON_LEFT
-		e.preventDefault()
 		ondrag = true
 		lastMousePositonX = e.clientX
 		lastMousePositonY = e.clientY
 		img.css("cursor", STYLE_CURSOR_IMAGE_MOVE)
+		e.preventDefault()
+		e.stopPropagation()
 	}
 
 	function onMousemove(e) {
@@ -166,14 +172,17 @@ function ViewableImage(img_src) {
 		}
 	}
 
-	function onMouseup() {
+	function onMouseup(e) {
 		if (ondrag) {
 			ondrag = false
 			img.css("cursor", STYLE_CURSOR_IMAGE_UNMOVE)
+			e.preventDefault()
+			e.stopPropagation()
 		}
 	}
 
 	function cancelEvent(e) {
+		e.preventDefault()
 		e.stopPropagation()
 		return false
 	}
